@@ -5,6 +5,7 @@ import { loadEntries } from '../actions/entries';
 import { selectEntries } from '../reducers';
 import { Loader } from '../components/UI';
 import EntryListing from '../components/EntryListing/EntryListing';
+import styles from "./CollectionPage.css";
 
 class CollectionPage extends React.Component {
 
@@ -15,6 +16,7 @@ class CollectionPage extends React.Component {
     dispatch: PropTypes.func.isRequired,
     page: PropTypes.number,
     entries: ImmutablePropTypes.list,
+    isFetching: PropTypes.bool.isRequired,
   };
 
   componentDidMount() {
@@ -37,10 +39,17 @@ class CollectionPage extends React.Component {
   };
 
   render() {
-    const { collections, collection, publicFolder, page, entries } = this.props;
+    const { collections, collection, publicFolder, page, entries, isFetching } = this.props;
     if (collections == null) {
       return <h1>No collections defined in your config.yml</h1>;
     }
+
+    const noEntriesContent = isFetching
+        ? (<Loader active>
+          {['Loading Entries', 'Caching Entries', 'This might take several minutes']}
+        </Loader>)
+        : <div className={styles.noEntries}>No Entries</div>;
+
     return (<div>
       {entries ?
         <EntryListing
@@ -53,7 +62,7 @@ class CollectionPage extends React.Component {
           {collection.get('label')}
         </EntryListing>
         :
-        <Loader active>{['Loading Entries', 'Caching Entries', 'This might take several minutes']}</Loader>
+        noEntriesContent
       }
     </div>);
   }
@@ -68,8 +77,9 @@ function mapStateToProps(state, ownProps) {
   const page = state.entries.getIn(['pages', collection.get('name'), 'page']);
 
   const entries = selectEntries(state, collection.get('name'));
+  const isFetching = state.entries.getIn(['pages', collection.get('name'), 'isFetching'], false);
 
-  return { slug, publicFolder, collection, collections, page, entries };
+  return { slug, publicFolder, collection, collections, page, entries, isFetching };
 }
 
 export default connect(mapStateToProps)(CollectionPage);
