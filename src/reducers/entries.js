@@ -15,7 +15,7 @@ let collection;
 let loadedEntries;
 let page;
 
-const entries = (state = Map({ entities: Map(), pages: Map() }), action) => {
+const entries = (state = Map({ entities: Map(), pages: Map(), cursors: Map() }), action) => {
   switch (action.type) {
     case ENTRY_REQUEST:
       return state.setIn(['entities', `${ action.payload.collection }.${ action.payload.slug }`, 'isFetching'], true);
@@ -43,6 +43,11 @@ const entries = (state = Map({ entities: Map(), pages: Map() }), action) => {
           page,
           ids: (!page || page === 0) ? ids : map.getIn(['pages', collection, 'ids'], List()).concat(ids),
         }));
+
+        const cursor = action.payload.cursor;
+        if (cursor) {
+          map.setIn(['cursors', collection], cursor);
+        }
       });
 
     case ENTRIES_FAILURE:
