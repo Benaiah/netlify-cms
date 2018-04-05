@@ -10,6 +10,7 @@ const Entries = ({
   publicFolder,
   page,
   onPaginate,
+  traverseCursor,
   isFetching,
   viewStyle
 }) => {
@@ -27,6 +28,7 @@ const Entries = ({
         publicFolder={publicFolder}
         page={page}
         onPaginate={onPaginate}
+        traverseCursor={traverseCursor}
         viewStyle={viewStyle}
       />
     );

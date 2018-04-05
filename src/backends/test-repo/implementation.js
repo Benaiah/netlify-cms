@@ -19,6 +19,10 @@ export default class TestRepo {
     this.assets = [];
   }
 
+  capabilities = {
+    pagination: ["page_size", "page_count", "next", "previous", "first", "last", "seek"],
+  };
+
   authComponent() {
     return AuthenticationPage;
   }

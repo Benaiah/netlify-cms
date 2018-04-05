@@ -57,8 +57,10 @@ export default class GitLab {
 
   entriesByFolder(collection, extension) {
     return this.api.listFiles(collection.get("folder"))
-    .then(files => files.filter(file => fileExtension(file.name) === extension))
-    .then(this.fetchFiles);
+    .then(({ files, cursor }) =>
+      this.fetchFiles(files.filter(file => fileExtension(file.name) === extension))
+      .then(fetchedFiles => ({ files: fetchedFiles, cursor }))
+    );
   }
 
   entriesByFiles(collection) {
@@ -66,7 +68,7 @@ export default class GitLab {
       path: collectionFile.get("file"),
       label: collectionFile.get("label"),
     }));
-    return this.fetchFiles(files);
+    return this.fetchFiles(files).then(fetchedFiles => ({ files: fetchedFiles, cursor: null }));
   }
 
   fetchFiles = (files) => {
@@ -119,5 +121,13 @@ export default class GitLab {
 
   deleteFile(path, commitMessage, options) {
     return this.api.deleteFile(path, commitMessage, options);
+  }
+
+  traverseCursor(cursor, action) {
+    return this.api.traverseCursor(cursor, action)
+      .then(async ({ files, newCursor }) => console.log(files, newCursor) || ({
+        files: await Promise.all(files.map(file => this.api.readFile(file.path, file.id).then(data => ({ file, data })))),
+        newCursor,
+      }));
   }
 }

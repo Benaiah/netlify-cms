@@ -130,30 +130,40 @@ class Backend {
 
   getToken = () => this.implementation.getToken();
 
+  // TODO: rename this - this method contains the post-processing
+  // functionality from `listEntries`, separated so that we can re-use
+  // it in `traverseCursor`
+  processEntries(collection, loadedEntries) {
+    const collectionFilter = collection.get('filter');
+    const entries = loadedEntries.map(loadedEntry => createEntry(
+      collection.get("name"),
+      selectEntrySlug(collection, loadedEntry.file.path),
+      loadedEntry.file.path,
+      { raw: loadedEntry.data || '', label: loadedEntry.file.label }
+    ))
+    const formattedEntries = entries.map(this.entryWithFormat(collection));
+    // If this collection has a "filter" property, filter entries accordingly
+    const filteredEntries = collectionFilter
+      ? this.filterEntries({ entries: formattedEntries }, collectionFilter)
+      : formattedEntries;
+    return filteredEntries;
+  }
+
   listEntries(collection) {
     const listMethod = this.implementation[selectListMethod(collection)];
     const extension = selectFolderEntryExtension(collection);
-    const collectionFilter = collection.get('filter');
     return listMethod.call(this.implementation, collection, extension)
-      .then(loadedEntries => (
-        loadedEntries.map(loadedEntry => createEntry(
-          collection.get("name"),
-          selectEntrySlug(collection, loadedEntry.file.path),
-          loadedEntry.file.path,
-          { raw: loadedEntry.data || '', label: loadedEntry.file.label }
-        ))
-      ))
-      .then(entries => (
-        {
-          entries: entries.map(this.entryWithFormat(collection)),
-        }
-      ))
-      // If this collection has a "filter" property, filter entries accordingly
-      .then(loadedCollection => (
-        {
-          entries: collectionFilter ? this.filterEntries(loadedCollection, collectionFilter) : loadedCollection.entries
-        }
-      ));
+      .then(({ files: loadedEntries, cursor }) => {
+        return { entries: this.processEntries(collection, loadedEntries), cursor };
+      });
+  }
+
+  // TODO: get rid of the collection argument to this
+  traverseCursor(cursor, action, collection) {
+    return this.implementation.traverseCursor(cursor, action)
+      .then(async ({ files, newCursor }) => {
+        return { entries: this.processEntries(collection, files), newCursor };
+      });
   }
 
   getEntry(collection, slug) {

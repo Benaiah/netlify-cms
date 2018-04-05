@@ -2,7 +2,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
-import { loadEntries as actionLoadEntries } from 'Actions/entries';
+import {
+  loadEntries as actionLoadEntries,
+  traverseCollectionCursor as actionTraverseCollectionCursor
+} from 'Actions/entries';
 import { selectEntries } from 'Reducers';
 import Entries from './Entries';
 
@@ -35,7 +38,12 @@ class EntriesCollection extends React.Component {
     loadEntries(collection, page);
   }
 
-  render () {
+  handleTraverseCursor = action => {
+    const { collection, traverseCursor } = this.props;
+    traverseCursor(collection, action);
+  }
+
+  render() {
     const { collection, entries, publicFolder, page, isFetching, viewStyle } = this.props;
 
     return (
@@ -45,6 +53,7 @@ class EntriesCollection extends React.Component {
         publicFolder={publicFolder}
         page={page}
         onPaginate={this.handleLoadMore}
+        traverseCursor={this.handleTraverseCursor}
         isFetching={isFetching}
         collectionName={collection.get('label')}
         viewStyle={viewStyle}
@@ -67,6 +76,9 @@ function mapStateToProps(state, ownProps) {
 
 const mapDispatchToProps = {
   loadEntries: actionLoadEntries,
+  // This is a collection view, so we dispatch traversals on
+  // collection cursors.
+  traverseCursor: actionTraverseCollectionCursor,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(EntriesCollection);

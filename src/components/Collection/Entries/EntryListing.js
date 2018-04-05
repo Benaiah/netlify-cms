@@ -23,6 +23,23 @@ export default class EntryListing extends React.Component {
     this.props.onPaginate(this.props.page + 1);
   };
 
+  cursorNext = () => {
+    this.props.traverseCursor("next");
+  }
+
+  cursorPrev = () => {
+    this.props.traverseCursor("prev");
+  }
+
+  cursorFirst = () => {
+    this.props.traverseCursor("first");
+  }
+
+  cursorLast = () => {
+    this.props.traverseCursor("last");
+  }
+
+
   inferFields = collection => {
     const titleField = selectInferedField(collection, 'title');
     const descriptionField = selectInferedField(collection, 'description');
@@ -63,7 +80,12 @@ export default class EntryListing extends React.Component {
               ? this.renderCardsForSingleCollection()
               : this.renderCardsForMultipleCollections()
           }
-          <Waypoint onEnter={this.handleLoadMore} />
+          <div>
+            <button onClick={this.cursorFirst}>first</button>
+            <button onClick={this.cursorPrev}>prev</button>
+            <button onClick={this.cursorNext}>next</button>
+            <button onClick={this.cursorLast}>last</button>
+          </div>
         </div>
       </div>
     );

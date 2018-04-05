@@ -272,6 +272,52 @@ export function loadEntries(collection, page = 0) {
   };
 }
 
+// traverseCursor validates the cursor, then calls the backend's
+// cursor traversal method.
+//
+// TODO: remove the collection argument - it only exists to support
+// processEntries in backend.js
+async function traverseCursor(backend, collection, cursor, action) {
+  if (!cursor) {
+    throw new Error("No cursor exists");
+  }
+  if (!validateCursor(cursor)) {
+    throw new invalidCursorError(cursor);
+  }
+  if (!cursor.actions.includes(action)) {
+    throw new Error(`This backend does not support the pagination action "${ action }"`);
+  }
+  return backend.traverseCursor(cursor, action, collection);
+}
+
+export function traverseCollectionCursor(collection, action) {
+  return async (dispatch, getState) => {
+    if (collection.get("isFetching")) {
+      return;
+    }
+    const state = getState();
+    const backend = currentBackend(state.config);
+    await dispatch(entriesLoading(collection));
+    try {
+      const cursor = state.cursors.get(collectionEntriesCursorKey(collection.get('name')));
+      await dispatch(entriesLoading(collection));
+      const { entries, newCursor } = await traverseCursor(backend, collection, cursor, action)
+
+      // We pass null for the old pagination argument - this should be
+      // removed eventually
+      return dispatch(entriesLoaded(collection, entries, null, newCursor));
+    } catch (err) {
+      console.log(err);
+      dispatch(notifSend({
+        message: `Failed to persist entry: ${ err }`,
+        kind: 'danger',
+        dismissAfter: 8000,
+      }));
+      return Promise.reject(dispatch(entriesFailed(collection, err)));
+    }
+  }
+}
+
 export function createEmptyDraft(collection) {
   return (dispatch) => {
     const dataFields = {};
