@@ -91,22 +91,18 @@ export default class API {
     return false;
   });
 
-  readFile = async (path, sha, ref=this.branch) => {
-    const cachedFile = sha ? await LocalForage.getItem(`gl.${ sha }`) : null;
+  readFile = async (path, sha, { ref = this.branch, parseText = true } = {}) => {
+    const cacheKey = parseText ? `gl.${ sha }` : `gl.${ sha }.blob`;
+    const cachedFile = sha ? await LocalForage.getItem(cacheKey) : null;
     if (cachedFile) { return cachedFile; }
-    const result = await this.requestText({
+    const result = await this.request({
       url: `${ this.repoURL }/repository/files/${ encodeURIComponent(path) }/raw`,
       params: { ref },
       cache: "no-store",
-    });
-    if (sha) { LocalForage.setItem(`gl.${ sha }`, result) }
+    }).then((parseText ? this.responseToText : this.responseToBlob));
+    if (sha) { LocalForage.setItem(cacheKey, result) }
     return result;
   };
-
-  fileDownloadURL = (path, ref=this.branch) => unsentRequest.toURL(this.buildRequest({
-    url: `${ this.repoURL }/repository/files/${ encodeURIComponent(path) }/raw`,
-    params: { ref },
-  }));
 
   getCursorFromHeaders = headers => {
     // indices and page counts are assumed to be zero-based, but the

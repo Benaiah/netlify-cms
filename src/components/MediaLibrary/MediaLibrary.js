@@ -24,6 +24,40 @@ import { Icon } from 'UI';
 const IMAGE_EXTENSIONS_VIEWABLE = [ 'jpg', 'jpeg', 'webp', 'gif', 'png', 'bmp', 'tiff', 'svg' ];
 const IMAGE_EXTENSIONS = [ ...IMAGE_EXTENSIONS_VIEWABLE ];
 
+class CardImage extends React.Component {
+  state = {
+    blobURL: '',
+  };
+
+  componentDidMount() {
+    const { image } = this.props;
+
+    if (!image.url && image.blobPromise) {
+      image.blobPromise.then(blob => {
+        const blobURL = window.URL.createObjectURL(blob);
+        this.setState({ blobURL });
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    window.URL.revokeObjectURL(this.state.blobURL);
+  }
+
+  render() {
+    const { blobURL } = this.state;
+    const { image } = this.props;
+
+    if (image.url) {
+      return <img src={image.url} className="nc-mediaLibrary-cardImage" />;
+    } else if (blobURL) {
+      return <img src={blobURL} className="nc-mediaLibrary-cardImage" />;
+    } else {
+      return <div className="nc-mediaLibrary-cardImage" />;
+    }
+  }
+}
+
 class MediaLibrary extends React.Component {
 
   /**
@@ -69,7 +103,7 @@ class MediaLibrary extends React.Component {
    * Transform file data for table display.
    */
   toTableData = files => {
-    const tableData = files && files.map(({ key, name, size, queryOrder, url, urlIsPublicPath }) => {
+    const tableData = files && files.map(({ key, name, size, queryOrder, url, urlIsPublicPath, blobPromise }) => {
       const ext = fileExtension(name).toLowerCase();
       return {
         key,
@@ -79,6 +113,7 @@ class MediaLibrary extends React.Component {
         queryOrder,
         url,
         urlIsPublicPath,
+        blobPromise,
         isImage: IMAGE_EXTENSIONS.includes(ext),
         isViewableImage: IMAGE_EXTENSIONS_VIEWABLE.includes(ext),
       };
@@ -316,7 +351,7 @@ class MediaLibrary extends React.Component {
                   <div className="nc-mediaLibrary-cardImage-container">
                     {
                       file.isViewableImage
-                        ? <img src={file.url} className="nc-mediaLibrary-cardImage"/>
+                        ? <CardImage image={file}/>
                         : <div className="nc-mediaLibrary-cardImage"/>
                     }
                   </div>
