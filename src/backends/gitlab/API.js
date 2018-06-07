@@ -32,12 +32,36 @@ export default class API {
     p => p.catch(err => Promise.reject(new APIError(err.message, null, "GitLab"))),
   ])(req);
 
-  parseResponse = async (res, { expectingOk=true, expectingFormat=false }) => {
-    const contentType = res.headers.get("Content-Type");
-    const isJSON = contentType === "application/json";
+  catchFormatErrors = (format, formatter) => res => {
+    try {
+      return formatter(res);
+    } catch (err) {
+      throw new Error(`Response cannot be parsed into the expected format (${ format }): ${ err.message }`);
+    }
+  }
+
+  responseFormats = fromJS({
+    json: async res => {
+      const contentType = res.headers.get("Content-Type");
+      if (contentType !== "application/json" && contentType !== "text/json") {
+        throw new Error(`${ contentType } is not a valid JSON Content-Type`);
+      }
+      return res.json();
+    },
+    text: async res => res.text(),
+    blob: async res => res.blob(),
+  }).mapEntries(
+    ([format, formatter]) => [format, this.catchFormatErrors(format, formatter)]
+  );
+
+  parseResponse = async (res, { expectingOk=true, expectingFormat="text" }) => {
     let body;
     try {
-      body = await ((expectingFormat === "json" || isJSON) ? res.json() : res.text());
+      const formatter = this.responseFormats.get(expectingFormat, false);
+      if (!formatter) {
+        throw new Error(`${ expectingFormat } is not a supported response format.`);
+      }
+      body = await formatter(res);
     } catch (err) {
       throw new APIError(err.message, res.status, "GitLab");
     }
@@ -48,6 +72,7 @@ export default class API {
   };
 
   responseToJSON = res => this.parseResponse(res, { expectingFormat: "json" });
+  responseToBlob = res => this.parseResponse(res, { expectingFormat: "blob" });
   responseToText = res => this.parseResponse(res, { expectingFormat: "text" });
   requestJSON = req => this.request(req).then(this.responseToJSON);
   requestText = req => this.request(req).then(this.responseToText);
