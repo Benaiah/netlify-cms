@@ -123,7 +123,7 @@ export default class GitLab {
 
     return this.api.listAllFiles(this.config.get("media_folder"))
       .then(files => files.map(({ id, name, path }) => {
-        const blobPromise = new Promise((resolve, reject) =>
+        const getBlobPromise = () => new Promise((resolve, reject) =>
           sem.take(() =>
             this.api.readFile(path, id, { parseText: false })
               .then(resolve, reject)
@@ -131,7 +131,7 @@ export default class GitLab {
           )
         );
 
-        return { id, name, blobPromise, path };
+        return { id, name, getBlobPromise, path };
       }));
   }
 
@@ -143,8 +143,8 @@ export default class GitLab {
   async persistMedia(mediaFile, options = {}) {
     await this.api.persistFiles([mediaFile], options);
     const { value, path, fileObj } = mediaFile;
-    const blobPromise = Promise.resolve(fileObj);
-    return { name: value, size: fileObj.size, blobPromise, path: trimStart(path, '/') };
+    const getBlobPromise = () => Promise.resolve(fileObj);
+    return { name: value, size: fileObj.size, getBlobPromise, path: trimStart(path, '/') };
   }
 
   deleteFile(path, commitMessage, options) {
