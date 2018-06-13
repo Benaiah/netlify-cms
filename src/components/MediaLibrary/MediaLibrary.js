@@ -1,6 +1,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { orderBy, get, isEmpty, map } from 'lodash';
+import { debounce, orderBy, get, isEmpty, map } from 'lodash';
+import { Map } from 'immutable';
 import c from 'classnames';
 import fuzzy from 'fuzzy';
 import Waypoint from 'react-waypoint';
@@ -26,38 +27,70 @@ const IMAGE_EXTENSIONS = [ ...IMAGE_EXTENSIONS_VIEWABLE ];
 
 class CardImage extends React.Component {
   state = {
-    blobURL: false,
+    imageURL: "",
+    isFetching: false,
+    isVisible: false,
   };
 
-  componentDidMount() {
-    const { image } = this.props;
-    const { blobURL: existingBlobURL } = this.state;
+  loadImage() {
+    const { image, getCachedImageURLByID, cacheImageURLByID } = this.props;
+    const { imageURL: existingImageURL, isFetching } = this.state;
 
-    if (!image.url && !existingBlobURL && image.getBlobPromise) {
+    if (existingImageURL !== "" || isFetching) {
+      return;
+    }
+
+    if (getCachedImageURLByID && image.key) {
+      const imageURL = getCachedImageURLByID(image.key);
+      if (imageURL) {
+        this.setState({ imageURL });
+        return;
+      }
+    }
+
+    if (image.url) {
+      this.setState({ imageURL: image.url });
+      if (image.key && cacheImageURLByID) {
+        cacheImageURLByID(image.key, image.url);
+      }
+      return;
+    }
+
+    if (image.getBlobPromise) {
+      this.setState({ isFetching: true });
       image.getBlobPromise().then(blob => {
-        const blobURL = window.URL.createObjectURL(blob);
-        this.setState({ blobURL });
+        const imageURL = window.URL.createObjectURL(blob);
+        this.setState({ imageURL, isFetching: false });
+        if (image.key && cacheImageURLByID) {
+          cacheImageURLByID(image.key, imageURL);
+        }
       });
     }
   }
 
-  componentWillUnmount() {
-    window.URL.revokeObjectURL(this.state.blobURL);
+  hideImage() {
+    this.setState({ imageURL: "", isFetching: false });
   }
 
   render() {
-    const { blobURL } = this.state;
-    const { image } = this.props;
+    const { isVisible } = this.props;
+    const { imageURL, isFetching } = this.state;
 
-    if (image.url) {
-      return <img src={image.url} className="nc-mediaLibrary-cardImage" />;
-    } else if (blobURL) {
-      return <img src={blobURL} className="nc-mediaLibrary-cardImage" />;
+    if (isVisible) {
+      if (imageURL === "" && !isFetching) {
+        this.loadImage();
+      }
+      return imageURL === ""
+        ? <div className="nc-mediaLibrary-cardImage" />
+        : <img src={imageURL} className="nc-mediaLibrary-cardImage" />;
     } else {
       return <div className="nc-mediaLibrary-cardImage" />;
     }
   }
 }
+
+const cardImageWidth = 300;
+const cardImageHeight = 260;
 
 class MediaLibrary extends React.Component {
 
@@ -68,7 +101,10 @@ class MediaLibrary extends React.Component {
   state = {
     selectedFile: {},
     query: '',
+    visibleIndices: { first: 0, last: 0 },
   };
+
+  imageURLsByIDs = Map();
 
   componentDidMount() {
     this.props.loadMedia();
@@ -244,6 +280,21 @@ class MediaLibrary extends React.Component {
     return matchFiles;
   };
 
+  calculateVisibleIndices = debounce(() => {
+    const { width, height } = this.scrollContainerRef.getBoundingClientRect();
+    const scrollTop = this.scrollContainerRef.scrollTop;
+    const cardsPerRow = Math.floor(width / cardImageWidth);
+    const firstVisibleRow = Math.floor(scrollTop / cardImageHeight);
+    const lastVisibleRow = Math.ceil((scrollTop + height) / cardImageHeight);
+    const firstVisibleIndex = firstVisibleRow * cardsPerRow;
+    const lastVisibleIndex = (lastVisibleRow * cardsPerRow) - 1;
+    this.setState({ visibleIndices: { first: firstVisibleIndex, last: lastVisibleIndex } });
+  }, 50);
+
+  componentWillUnmount = () => {
+    this.calculateVisibleIndices.cancel();
+  }
+
   render() {
     const {
       isVisible,
@@ -260,7 +311,7 @@ class MediaLibrary extends React.Component {
       isPaginating,
       privateUpload,
     } = this.props;
-    const { query, selectedFile } = this.state;
+    const { query, selectedFile, visibleIndices } = this.state;
     const filteredFiles = forImage ? this.filterImages(files) : files;
     const queriedFiles = (!dynamicSearch && query) ? this.queryFilter(query, filteredFiles) : filteredFiles;
     const tableData = this.toTableData(queriedFiles);
@@ -339,7 +390,7 @@ class MediaLibrary extends React.Component {
             ? <div className="nc-mediaLibrary-emptyMessage"><h1>{emptyMessage}</h1></div>
             : null
         }
-        <div className="nc-mediaLibrary-cardGrid-container" ref={ref => (this.scrollContainerRef = ref)}>
+        <div className="nc-mediaLibrary-cardGrid-container" ref={ref => (this.scrollContainerRef = ref)} onScroll={this.calculateVisibleIndices}>
           <div className="nc-mediaLibrary-cardGrid">
             {
               tableData.map((file, idx) =>
@@ -352,7 +403,12 @@ class MediaLibrary extends React.Component {
                   <div className="nc-mediaLibrary-cardImage-container">
                     {
                       file.isViewableImage
-                        ? <CardImage image={file}/>
+                        ? <CardImage
+                          isVisible={visibleIndices && idx >= visibleIndices.first && idx <= visibleIndices.last}
+                          image={file}
+                          getCachedImageURLByID={id => this.imageURLsByIDs.get(id)}
+                          cacheImageURLByID={(id, url) => { this.imageURLsByIDs = this.imageURLsByIDs.set(id, url); }}
+                        />
                         : <div className="nc-mediaLibrary-cardImage"/>
                     }
                   </div>
