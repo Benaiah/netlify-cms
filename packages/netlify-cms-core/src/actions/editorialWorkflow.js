@@ -121,6 +121,7 @@ function unpublishedEntryPersisted(collection, entry, transactionID, slug) {
 }
 
 function unpublishedEntryPersistedFail(error, transactionID) {
+  console.error(error);
   return {
     type: UNPUBLISHED_ENTRY_PERSIST_FAILURE,
     payload: { error },
@@ -265,6 +266,7 @@ export function loadUnpublishedEntries(collections) {
     dispatch(unpublishedEntriesLoading());
     backend
       .unpublishedEntries(collections)
+      .then(response => console.log({ response }) || response)
       .then(response => dispatch(unpublishedEntriesLoaded(response.entries, response.pagination)))
       .catch(error => {
         dispatch(

@@ -227,6 +227,45 @@ export function deleteMedia(file, opts = {}) {
   };
 }
 
+// debounces a function, collecting its argument array from each call
+// into an array and calling the function with that array when the
+// debouncing is complete
+// const debounceAndBatch = (fn, delay) => {
+//   let timer = null;
+//   let collectedArgs = [];
+//   return (...args) => {
+//     clearTimeout(timer);
+//     collectedArgs.push(args);
+//     timer = setTimeout(() => {
+//       fn(collectedArgs);
+//       collectedArgs = [];
+//     });
+//   };
+// };
+
+// const _loadMediaDisplayURL = debounceAndBatch(
+//   files => async (dispatch, getState) => {
+//     const state = getState();
+//     const displayURLs = state.mediaLibrary.get('displayURLs', Map());
+//     // file is destructured from an array here because file is an array
+//     // of argument arrays from debounceAndBatch
+//     const displayURLRequests = files.filter(
+//       ([{ displayURL, id, url }]) =>
+//         !id ||
+//         // displayURL is used by most backends; url (like urlIsPublicPath) is used exclusively by the
+//         // assetStore integration. Only the assetStore uses URLs which can actually be inserted into
+//         // an entry - other backends create a domain-relative URL using the public_folder from the
+//         // config and the file's name.
+//         (!displayURL && !url) ||
+//         displayURLs.getIn([id, 'url']) ||
+//         displayURLs.getIn([id, 'isFetching']) ||
+//         displayURLs.getIn([id, 'err']),
+//     ).map(([{ displayURL, id, url }]) => {
+//     });
+//   },
+//   15,
+// );
+
 export function loadMediaDisplayURL(file) {
   return async (dispatch, getState) => {
     const { displayURL, id, url } = file;
@@ -245,25 +284,21 @@ export function loadMediaDisplayURL(file) {
     ) {
       return Promise.resolve();
     }
-    if (typeof url === 'string') {
+    if (typeof url === 'string' || typeof displayURL === 'string') {
       dispatch(mediaDisplayURLRequest(id));
-      return dispatch(mediaDisplayURLSuccess(id, displayURL));
-    }
-    if (typeof displayURL === 'string') {
-      dispatch(mediaDisplayURLRequest(id));
-      return dispatch(mediaDisplayURLSuccess(id, displayURL));
+      dispatch(mediaDisplayURLSuccess(id, displayURL));
     }
     try {
       const backend = currentBackend(state.config);
       dispatch(mediaDisplayURLRequest(id));
       const newURL = await backend.getMediaDisplayURL(displayURL);
       if (newURL) {
-        return dispatch(mediaDisplayURLSuccess(id, newURL));
+        dispatch(mediaDisplayURLSuccess(id, newURL));
       } else {
         throw new Error('No display URL was returned!');
       }
     } catch (err) {
-      return dispatch(mediaDisplayURLFailure(id, err));
+      dispatch(mediaDisplayURLFailure(id, err));
     }
   };
 }
