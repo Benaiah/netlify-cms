@@ -15,6 +15,12 @@ const WorkflowListContainer = styled.div`
   grid-template-columns: 33.3% 33.3% 33.3%;
 `;
 
+const WorkflowListContainerForkWorkflow = styled.div`
+  min-height: 60%;
+  display: grid;
+  grid-template-columns: 50% 50% 0%;
+`;
+
 const styles = {
   column: css`
     margin: 0 20px;
@@ -54,6 +60,9 @@ const styles = {
   `,
   columnHovered: css`
     border-color: ${colors.active};
+  `,
+  hiddenColumn: css`
+    display: none;
   `,
 };
 
@@ -115,6 +124,7 @@ class WorkflowList extends React.Component {
     handlePublish: PropTypes.func.isRequired,
     handleDelete: PropTypes.func.isRequired,
     t: PropTypes.func.isRequired,
+    isForkWorkflow: PropTypes.bool,
   };
 
   handleChangeStatus = (newStatus, dragProps) => {
@@ -152,7 +162,12 @@ class WorkflowList extends React.Component {
         >
           {(connect, { isHovered }) =>
             connect(
-              <div className={cx(styles.column, { [styles.columnHovered]: isHovered })}>
+              <div
+                className={cx(styles.column, {
+                  [styles.columnHovered]: isHovered,
+                  [styles.hiddenColumn]: currColumn === 'pending_publish',
+                })}
+              >
                 <ColumnHeader name={currColumn}>
                   {getColumnHeaderText(currColumn, this.props.t)}
                 </ColumnHeader>
@@ -216,7 +231,10 @@ class WorkflowList extends React.Component {
 
   render() {
     const columns = this.renderColumns(this.props.entries);
-    return <WorkflowListContainer>{columns}</WorkflowListContainer>;
+    const ListContainer = this.props.isForkWorkflow
+      ? WorkflowListContainerForkWorkflow
+      : WorkflowListContainer;
+    return <ListContainer>{columns}</ListContainer>;
   }
 }
 
