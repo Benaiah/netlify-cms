@@ -266,7 +266,6 @@ export function loadUnpublishedEntries(collections) {
     dispatch(unpublishedEntriesLoading());
     backend
       .unpublishedEntries(collections)
-      .then(response => console.log({ response }) || response)
       .then(response => dispatch(unpublishedEntriesLoaded(response.entries, response.pagination)))
       .catch(error => {
         dispatch(

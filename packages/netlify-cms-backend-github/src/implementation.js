@@ -122,10 +122,7 @@ export default class GitHub {
         },
       )
         .then(res => res.json())
-        .then(
-          ({ permission }) =>
-            console.log(permission) || permission === 'admin' || permission === 'write',
-        );
+        .then(({ permission }) => permission === 'admin' || permission === 'write');
     }
     return this._userIsOriginMaintainerPromises[username];
   }
@@ -138,7 +135,6 @@ export default class GitHub {
 
     // Origin maintainers should be able to use the CMS normally
     if (await this.userIsOriginMaintainer({ token })) {
-      console.log('USER IS ORIGIN MAINTAINER!');
       this.repo = this.originRepo;
       this.useForkWorkflow = false;
       return Promise.resolve();
@@ -303,13 +299,11 @@ export default class GitHub {
           promises.push(
             new Promise(resolve => {
               const contentKey = ref.split('refs/heads/cms/').pop();
-              console.log(contentKey);
               const slug = contentKey.split('/').pop();
               return sem.take(() =>
                 this.api
                   .readUnpublishedBranchFile(contentKey)
                   .then(data => {
-                    console.log({ data });
                     if (data === null || data === undefined) {
                       resolve(null);
                       sem.leave();
@@ -336,7 +330,6 @@ export default class GitHub {
         return Promise.all(promises);
       })
       .catch(error => {
-        debugger;
         if (error.message === 'Not Found') {
           return Promise.resolve([]);
         }
