@@ -64,6 +64,13 @@ const styles = {
   hiddenColumn: css`
     display: none;
   `,
+  hiddenRightBorder: css`
+    &:not(:first-child):not(:last-child) {
+      &:after {
+        display: none;
+      }
+    }
+  `,
 };
 
 const ColumnHeader = styled.h2`
@@ -151,6 +158,7 @@ class WorkflowList extends React.Component {
   };
 
   renderColumns = (entries, column) => {
+    const { isForkWorkflow } = this.props;
     if (!entries) return null;
 
     if (!column) {
@@ -165,7 +173,8 @@ class WorkflowList extends React.Component {
               <div
                 className={cx(styles.column, {
                   [styles.columnHovered]: isHovered,
-                  [styles.hiddenColumn]: currColumn === 'pending_publish',
+                  [styles.hiddenRightBorder]: isForkWorkflow && currColumn === 'pending_review',
+                  [styles.hiddenColumn]: isForkWorkflow && currColumn === 'pending_publish',
                 })}
               >
                 <ColumnHeader name={currColumn}>
