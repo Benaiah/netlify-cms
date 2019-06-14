@@ -199,14 +199,14 @@ export default class GitHub {
   }
 
   async entriesByFolder(collection, extension) {
-    const repoURL = `repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
+    const repoURL = `/repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
     const files = await this.api.listFiles(collection.get('folder'));
     const filteredFiles = files.filter(file => file.name.endsWith('.' + extension));
     return this.fetchFiles(filteredFiles, { repoURL });
   }
 
   entriesByFiles(collection) {
-    const repoURL = `repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
+    const repoURL = `/repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
     const files = collection.get('files').map(collectionFile => ({
       path: collectionFile.get('file'),
       label: collectionFile.get('label'),
@@ -243,7 +243,7 @@ export default class GitHub {
 
   // Fetches a single entry.
   getEntry(collection, slug, path) {
-    const repoURL = `repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
+    const repoURL = `/repos/${this.useForkWorkflow ? this.originRepo : this.repo}`;
     return this.api.readFile(path, null, { repoURL }).then(data => ({
       file: { path },
       data,
